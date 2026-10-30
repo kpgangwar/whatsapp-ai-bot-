@@ -1,7 +1,7 @@
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const SYSTEM_PROMPT = `
 Aap Dream Makeover (Green Park, Bareilly) ke official WhatsApp assistant hain.
@@ -32,6 +32,7 @@ module.exports = async (req, res) => {
 
     const body = req.body;
     if (
+      body &&
       body.entry &&
       body.entry[0].changes &&
       body.entry[0].changes[0].value.messages &&
@@ -44,17 +45,11 @@ module.exports = async (req, res) => {
         const userText = msg.text.body;
 
         try {
-          const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: `${SYSTEM_PROMPT}\n\nCustomer: ${userText}\nAssistant:` }]
-              }
-            ]
-          });
+          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const prompt = `${SYSTEM_PROMPT}\n\nCustomer: ${userText}\nAssistant:`;
 
-          const replyText = response.text.trim();
+          const result = await model.generateContent(prompt);
+          const replyText = result.response.text().trim();
 
           await axios.post(
             `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
